@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{% block title %}Reparto de Agua{% endblock %}</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+{% if user %}
+<nav class="navbar">
+  <div class="nav-brand"><a href="/">💧 Reparto</a></div>
+  <div class="nav-links">
+    <a href="/">Inicio</a>
+    <a href="/clientes">Clientes</a>
+    <a href="/remitos">Remitos</a>
+    <a href="/facturacion">Facturación</a>
+    <a href="/logout" class="logout">Salir ({{ user.nombre }})</a>
+  </div>
+</nav>
+{% endif %}
+<main class="container">
+{% block content %}{% endblock %}
+</main>
+</body>
+</html>

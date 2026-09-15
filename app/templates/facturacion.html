@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Facturación mensual</h1>
+
+<div class="card">
+  <form method="get" action="/facturacion" class="row2" style="align-items:end">
+    <div class="field">
+      <label>Período</label>
+      <input type="month" name="periodo" value="{{ periodo }}">
+    </div>
+    <div class="field">
+      <button type="submit">Ver período</button>
+    </div>
+  </form>
+</div>
+
+<div class="card">
+  <h2>Generar / actualizar facturación de {{ periodo }}</h2>
+  <p style="color:#667;font-size:0.9em">
+    Suma automáticamente el abono de cada cliente activo + los remitos cargados en este período.
+    Los períodos ya marcados como "facturados" no se pisan.
+  </p>
+  <form method="post" action="/facturacion/generar">
+    <input type="hidden" name="periodo" value="{{ periodo }}">
+    <button type="submit">⚙️ Generar facturación de {{ periodo }}</button>
+  </form>
+</div>
+
+<div class="card">
+  <div class="top-actions">
+    <h2>Detalle del período — Total: {{ total_periodo | money }}</h2>
+  </div>
+  <div class="tabla-wrap">
+  <table>
+    <tr>
+      <th>Cliente</th><th>Abono</th><th>Bid.20 extra</th><th>Bid.10 extra</th>
+      <th>Sifones</th><th>Total</th><th>Facturado</th>
+    </tr>
+    {% for f in filas %}
+    <tr>
+      <td><a href="/clientes/{{ f.cliente_id }}">{{ f.cliente.nombre }}</a></td>
+      <td>{{ f.abono | money }}</td>
+      <td>{{ f.bidones_20_extra }}</td>
+      <td>{{ f.bidones_10_extra }}</td>
+      <td>{{ f.sifones }}</td>
+      <td><strong>{{ f.total | money }}</strong></td>
+      <td>
+        <form method="post" action="/facturacion/{{ f.id }}/marcar" style="display:inline">
+          <input type="hidden" name="periodo" value="{{ periodo }}">
+          <button class="btn-chico {{ 'btn-secundario' if not f.facturado }}" type="submit">
+            {{ "✅ Sí" if f.facturado else "Marcar" }}
+          </button>
+        </form>
+      </td>
+    </tr>
+    {% else %}
+    <tr><td colspan="7">Todavía no generaste la facturación de este período.</td></tr>
+    {% endfor %}
+  </table>
+  </div>
+</div>
+{% endblock %}

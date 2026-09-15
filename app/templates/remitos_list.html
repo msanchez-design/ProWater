@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="top-actions">
+  <h1>Remitos</h1>
+  <a class="btn" href="/remitos/nuevo">+ Cargar remito</a>
+</div>
+
+<div class="tabla-wrap">
+<table>
+  <tr><th>Fecha</th><th>Cliente</th><th>Bid. 20L</th><th>Bid. 10L</th><th>Sifones</th><th>Cargado por</th></tr>
+  {% for r in remitos %}
+  <tr>
+    <td>{{ r.fecha }}</td>
+    <td><a href="/clientes/{{ r.cliente_id }}">{{ r.cliente.nombre }}</a></td>
+    <td>{{ r.bidones_20 }}</td>
+    <td>{{ r.bidones_10 }}</td>
+    <td>{{ r.sifones }}</td>
+    <td>{{ r.usuario.nombre if r.usuario else "-" }}</td>
+  </tr>
+  {% else %}
+  <tr><td colspan="6">No hay remitos cargados todavía.</td></tr>
+  {% endfor %}
+</table>
+</div>
+{% endblock %}

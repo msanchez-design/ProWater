@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="top-actions">
+  <h1>Clientes</h1>
+  <a class="btn" href="/clientes/nuevo">+ Nuevo cliente</a>
+</div>
+
+<form method="get" action="/clientes" style="margin-bottom:14px">
+  <input type="text" name="q" placeholder="Buscar cliente..." value="{{ q }}">
+</form>
+
+<div class="tabla-wrap">
+<table>
+  <tr><th>Nombre</th><th>Barrio</th><th>Teléfono</th><th>Dispensers</th><th>Saldo</th></tr>
+  {% for c in clientes %}
+  <tr>
+    <td><a href="/clientes/{{ c.id }}">{{ c.nombre }}</a></td>
+    <td>{{ c.barrio or "-" }}</td>
+    <td>{{ c.telefono or "-" }}</td>
+    <td>{{ c.cantidad_dispensers }}</td>
+    <td class="{{ 'deuda-positiva' if saldos[c.id] > 0 else 'deuda-cero' }}">
+      {{ saldos[c.id] | money }}
+    </td>
+  </tr>
+  {% else %}
+  <tr><td colspan="5">No hay clientes cargados todavía.</td></tr>
+  {% endfor %}
+</table>
+</div>
+{% endblock %}

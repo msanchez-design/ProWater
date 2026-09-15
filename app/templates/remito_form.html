@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Cargar remito</h1>
+
+<form method="post" action="/remitos/nuevo" class="card">
+  <div class="row2">
+    <div class="field">
+      <label>Cliente</label>
+      <select name="cliente_id" required>
+        <option value="">-- Elegir cliente --</option>
+        {% for c in clientes %}
+        <option value="{{ c.id }}">{{ c.nombre }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="field">
+      <label>Fecha</label>
+      <input type="date" name="fecha" value="{{ hoy }}" required>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>N° de remito (opcional)</label>
+    <input type="text" name="numero">
+  </div>
+
+  <div class="row3">
+    <div class="field">
+      <label>Bidones 20L entregados</label>
+      <input type="number" name="bidones_20" value="0" min="0">
+    </div>
+    <div class="field">
+      <label>Bidones 10L entregados</label>
+      <input type="number" name="bidones_10" value="0" min="0">
+    </div>
+    <div class="field">
+      <label>Sifones entregados</label>
+      <input type="number" name="sifones" value="0" min="0">
+    </div>
+  </div>
+
+  <div class="row2">
+    <div class="field">
+      <label>Dispensers instalados (nuevos)</label>
+      <input type="number" name="dispensers_entregados" value="0" min="0">
+    </div>
+    <div class="field">
+      <label>Dispensers retirados</label>
+      <input type="number" name="dispensers_retirados" value="0" min="0">
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Observación</label>
+    <textarea name="observacion" rows="2"></textarea>
+  </div>
+
+  <button type="submit">Guardar remito</button>
+  <a href="/remitos" class="btn btn-secundario">Cancelar</a>
+</form>
+{% endblock %}

@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Hola, {{ user.nombre }} 👋</h1>
+
+<div class="grid" style="margin-bottom:20px">
+  <div class="stat">
+    <div class="valor">{{ deuda_total | money }}</div>
+    <div class="label">Deuda total pendiente</div>
+  </div>
+  <div class="stat">
+    <div class="valor">{{ cantidad_clientes_deuda }}</div>
+    <div class="label">Clientes con saldo pendiente</div>
+  </div>
+  <div class="stat">
+    <div class="valor"><a href="/remitos/nuevo">+ Cargar</a></div>
+    <div class="label">Nuevo remito</div>
+  </div>
+</div>
+
+<div class="card">
+  <h2>Clientes con mayor deuda</h2>
+  <div class="tabla-wrap">
+  <table>
+    <tr><th>Cliente</th><th>Saldo</th></tr>
+    {% for c, saldo in clientes_con_deuda %}
+    <tr>
+      <td><a href="/clientes/{{ c.id }}">{{ c.nombre }}</a></td>
+      <td class="deuda-positiva">{{ saldo | money }}</td>
+    </tr>
+    {% else %}
+    <tr><td colspan="2">No hay deudas pendientes 🎉</td></tr>
+    {% endfor %}
+  </table>
+  </div>
+</div>
+
+<div class="card">
+  <h2>Últimos remitos cargados</h2>
+  <div class="tabla-wrap">
+  <table>
+    <tr><th>Fecha</th><th>Cliente</th><th>Bid. 20L</th><th>Bid. 10L</th><th>Sifones</th></tr>
+    {% for r in ultimos_remitos %}
+    <tr>
+      <td>{{ r.fecha }}</td>
+      <td><a href="/clientes/{{ r.cliente_id }}">{{ r.cliente.nombre }}</a></td>
+      <td>{{ r.bidones_20 }}</td>
+      <td>{{ r.bidones_10 }}</td>
+      <td>{{ r.sifones }}</td>
+    </tr>
+    {% else %}
+    <tr><td colspan="5">Todavía no cargaste remitos.</td></tr>
+    {% endfor %}
+  </table>
+  </div>
+</div>
+{% endblock %}

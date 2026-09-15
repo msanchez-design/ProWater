@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="top-actions">
+  <h1>{{ cliente.nombre }}</h1>
+  <a class="btn btn-secundario" href="/clientes/{{ cliente.id }}/editar">Editar datos</a>
+</div>
+
+<div class="grid" style="margin-bottom:16px">
+  <div class="stat">
+    <div class="valor {{ 'deuda-positiva' if saldo > 0 else 'deuda-cero' }}">{{ saldo | money }}</div>
+    <div class="label">Saldo actual</div>
+  </div>
+  <div class="stat">
+    <div class="valor">{{ cliente.telefono or "-" }}</div>
+    <div class="label">Teléfono</div>
+  </div>
+  <div class="stat">
+    <div class="valor">{{ cliente.cantidad_dispensers }}</div>
+    <div class="label">Dispensers instalados</div>
+  </div>
+</div>
+
+<div class="card">
+  <h2>Registrar pago</h2>
+  <form method="post" action="/clientes/{{ cliente.id }}/pagos/nuevo" class="row3">
+    <div class="field">
+      <label>Fecha</label>
+      <input type="date" name="fecha" required>
+    </div>
+    <div class="field">
+      <label>Monto ($)</label>
+      <input type="number" step="0.01" name="monto" required>
+    </div>
+    <div class="field">
+      <label>Medio de pago</label>
+      <select name="medio_pago">
+        <option value="Efectivo">Efectivo</option>
+        <option value="Transferencia">Transferencia</option>
+        <option value="Mercado Pago">Mercado Pago</option>
+        <option value="Otro">Otro</option>
+      </select>
+    </div>
+    <div class="field" style="grid-column: 1 / -1">
+      <label>Observación</label>
+      <input type="text" name="observacion">
+    </div>
+    <div style="grid-column: 1 / -1">
+      <button type="submit">Registrar pago</button>
+    </div>
+  </form>
+</div>
+
+<div class="card">
+  <h2>Estado de cuenta</h2>
+  <div class="tabla-wrap">
+  <table>
+    <tr><th>Fecha</th><th>Movimiento</th><th>Debe</th><th>Paga</th><th>Saldo</th></tr>
+    {% for m in movimientos %}
+    <tr>
+      <td>{{ m.fecha }}</td>
+      <td>{{ m.tipo }} - {{ m.detalle }}</td>
+      <td>{{ (m.debito | money) if m.debito else "" }}</td>
+      <td>{{ (m.credito | money) if m.credito else "" }}</td>
+      <td class="{{ 'deuda-positiva' if m.saldo > 0 else 'deuda-cero' }}">{{ m.saldo | money }}</td>
+    </tr>
+    {% else %}
+    <tr><td colspan="5">Sin movimientos todavía.</td></tr>
+    {% endfor %}
+  </table>
+  </div>
+</div>
+
+<div class="card">
+  <h2>Últimos remitos</h2>
+  <div class="tabla-wrap">
+  <table>
+    <tr><th>Fecha</th><th>Bid. 20L</th><th>Bid. 10L</th><th>Sifones</th><th>Observación</th></tr>
+    {% for r in remitos %}
+    <tr>
+      <td>{{ r.fecha }}</td>
+      <td>{{ r.bidones_20 }}</td>
+      <td>{{ r.bidones_10 }}</td>
+      <td>{{ r.sifones }}</td>
+      <td>{{ r.observacion or "" }}</td>
+    </tr>
+    {% else %}
+    <tr><td colspan="5">Sin remitos todavía.</td></tr>
+    {% endfor %}
+  </table>
+  </div>
+</div>
+{% endblock %}

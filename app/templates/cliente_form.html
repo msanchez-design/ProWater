@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>{{ "Editar cliente" if cliente else "Nuevo cliente" }}</h1>
+
+<form method="post" action="{{ ('/clientes/' ~ cliente.id ~ '/editar') if cliente else '/clientes/nuevo' }}" class="card">
+  <div class="field">
+    <label>Nombre / Razón social</label>
+    <input type="text" name="nombre" required value="{{ cliente.nombre if cliente else '' }}">
+  </div>
+
+  <div class="row3">
+    <div class="field">
+      <label>CUIT</label>
+      <input type="text" name="cuit" value="{{ cliente.cuit if cliente else '' }}">
+    </div>
+    <div class="field">
+      <label>Condición fiscal</label>
+      <select name="condicion_fiscal">
+        {% set cf = cliente.condicion_fiscal if cliente else '' %}
+        <option value="CONSUMIDOR FINAL" {{ 'selected' if cf=='CONSUMIDOR FINAL' }}>Consumidor Final</option>
+        <option value="RESPONSABLE INSCRIPTO" {{ 'selected' if cf=='RESPONSABLE INSCRIPTO' }}>Responsable Inscripto</option>
+        <option value="EXENTO" {{ 'selected' if cf=='EXENTO' }}>Exento</option>
+        <option value="MONOTRIBUTO" {{ 'selected' if cf=='MONOTRIBUTO' }}>Monotributo</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Tipo de factura</label>
+      <select name="tipo_factura">
+        {% set tf = cliente.tipo_factura if cliente else '' %}
+        <option value="A" {{ 'selected' if tf=='A' }}>A</option>
+        <option value="B" {{ 'selected' if tf=='B' }}>B</option>
+        <option value="C" {{ 'selected' if tf=='C' }}>C</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="row3">
+    <div class="field">
+      <label>Teléfono</label>
+      <input type="text" name="telefono" value="{{ cliente.telefono if cliente else '' }}">
+    </div>
+    <div class="field">
+      <label>Dirección</label>
+      <input type="text" name="direccion" value="{{ cliente.direccion if cliente else '' }}">
+    </div>
+    <div class="field">
+      <label>Barrio</label>
+      <input type="text" name="barrio" value="{{ cliente.barrio if cliente else '' }}">
+    </div>
+  </div>
+
+  <h2>Abono y precios</h2>
+  <div class="row3">
+    <div class="field">
+      <label>Cantidad de dispensers</label>
+      <input type="number" name="cantidad_dispensers" value="{{ cliente.cantidad_dispensers if cliente else 0 }}">
+    </div>
+    <div class="field">
+      <label>Abono mensual ($)</label>
+      <input type="number" step="0.01" name="abono_mensual" value="{{ cliente.abono_mensual if cliente else 0 }}">
+    </div>
+    <div class="field"></div>
+  </div>
+  <div class="row3">
+    <div class="field">
+      <label>Precio bidón 20L extra ($)</label>
+      <input type="number" step="0.01" name="precio_bidon20" value="{{ cliente.precio_bidon20 if cliente else 0 }}">
+    </div>
+    <div class="field">
+      <label>Precio bidón 10L extra ($)</label>
+      <input type="number" step="0.01" name="precio_bidon10" value="{{ cliente.precio_bidon10 if cliente else 0 }}">
+    </div>
+    <div class="field">
+      <label>Precio sifón ($)</label>
+      <input type="number" step="0.01" name="precio_sifon" value="{{ cliente.precio_sifon if cliente else 0 }}">
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Observación</label>
+    <textarea name="observacion" rows="2">{{ cliente.observacion if cliente else '' }}</textarea>
+  </div>
+
+  {% if cliente %}
+  <div class="field">
+    <label><input type="checkbox" name="activo" style="width:auto;display:inline-block" {{ 'checked' if cliente.activo }}> Cliente activo</label>
+  </div>
+  {% endif %}
+
+  <button type="submit">Guardar</button>
+  <a href="/clientes" class="btn btn-secundario">Cancelar</a>
+</form>
+{% endblock %}
