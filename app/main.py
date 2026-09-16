@@ -6,7 +6,7 @@ from fastapi.responses import RedirectResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from starlette.middleware.sessions import SessionMiddleware
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, contains_eager, joinedload
 from dotenv import load_dotenv
 
 from . import models, crud, auth
@@ -90,8 +90,9 @@ def dashboard(request: Request, db: Session = Depends(get_db)):
     resumen = crud.resumen_deuda_clientes(db)
     deuda_total = sum(saldo for _, saldo in resumen if saldo > 0)
     clientes_con_deuda = [x for x in resumen if x[1] > 0]
-    ultimos_remitos = db.query(models.Remito).order_by(models.Remito.fecha.desc(),
-                                                         models.Remito.id.desc()).limit(10).all()
+    ultimos_remitos = db.query(models.Remito).options(
+        joinedload(models.Remito.cliente)
+    ).order_by(models.Remito.fecha.desc(), models.Remito.id.desc()).limit(10).all()
 
     return templates.TemplateResponse("dashboard.html", {
         "request": request, "user": user,
@@ -225,7 +226,9 @@ def remitos_list(request: Request, db: Session = Depends(get_db)):
     user = usuario_o_redirect(request, db)
     if not user:
         return RedirectResponse(url="/login", status_code=303)
-    remitos = db.query(models.Remito).order_by(models.Remito.fecha.desc(), models.Remito.id.desc()).limit(100).all()
+    remitos = db.query(models.Remito).options(
+        joinedload(models.Remito.cliente), joinedload(models.Remito.usuario)
+    ).order_by(models.Remito.fecha.desc(), models.Remito.id.desc()).limit(100).all()
     return templates.TemplateResponse("remitos_list.html", {"request": request, "user": user, "remitos": remitos})
 
 
@@ -278,8 +281,8 @@ def facturacion_view(request: Request, periodo: str = None, db: Session = Depend
         return RedirectResponse(url="/login", status_code=303)
     if not periodo:
         periodo = date.today().strftime("%Y-%m")
-    filas = db.query(models.Facturacion).filter(models.Facturacion.periodo == periodo) \
-        .join(models.Cliente).order_by(models.Cliente.nombre).all()
+    filas = db.query(models.Facturacion).join(models.Cliente).filter(models.Facturacion.periodo == periodo) \
+        .options(contains_eager(models.Facturacion.cliente)).order_by(models.Cliente.nombre).all()
     total_periodo = sum(f.total for f in filas)
     return templates.TemplateResponse("facturacion.html", {
         "request": request, "user": user, "filas": filas, "periodo": periodo, "total_periodo": total_periodo
