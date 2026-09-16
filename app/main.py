@@ -110,7 +110,7 @@ def clientes_list(request: Request, q: str = None, db: Session = Depends(get_db)
     if not user:
         return RedirectResponse(url="/login", status_code=303)
     clientes = crud.listar_clientes(db, buscar=q)
-    saldos = {c.id: crud.saldo_cliente(db, c.id) for c in clientes}
+    saldos = crud.saldos_todos(db, [c.id for c in clientes])
     return templates.TemplateResponse("clientes_list.html", {
         "request": request, "user": user, "clientes": clientes, "saldos": saldos, "q": q or ""
     })
