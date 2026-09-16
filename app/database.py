@@ -19,8 +19,19 @@ connect_args = {}
 if DATABASE_URL.startswith("sqlite"):
     # Solo se usa si no configuraste Supabase todavía (modo prueba local)
     connect_args = {"check_same_thread": False}
+elif DATABASE_URL.startswith("postgresql+pg8000"):
+    import ssl
+    ssl_context = ssl.create_default_context()
+    # Supabase exige conexión encriptada; sin esto, algunos entornos (como Render)
+    # se quedan "colgados" intentando conectar en vez de dar un error claro.
+    connect_args = {"ssl_context": ssl_context, "timeout": 10}
 
-engine = create_engine(DATABASE_URL, connect_args=connect_args, pool_pre_ping=True)
+engine = create_engine(
+    DATABASE_URL,
+    connect_args=connect_args,
+    pool_pre_ping=True,
+    pool_recycle=300,  # evita usar conexiones que Supabase ya cerró por inactividad
+)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
