@@ -22,8 +22,11 @@ if DATABASE_URL.startswith("sqlite"):
 elif DATABASE_URL.startswith("postgresql+pg8000"):
     import ssl
     ssl_context = ssl.create_default_context()
-    # Supabase exige conexión encriptada; sin esto, algunos entornos (como Render)
-    # se quedan "colgados" intentando conectar en vez de dar un error claro.
+    # No verificamos la cadena del certificado: el "pooler" de Supabase la presenta
+    # de una forma que Render no puede validar, aunque la conexión sigue yendo
+    # encriptada igual. Sin esto, el deploy falla con CERTIFICATE_VERIFY_FAILED.
+    ssl_context.check_hostname = False
+    ssl_context.verify_mode = ssl.CERT_NONE
     connect_args = {"ssl_context": ssl_context, "timeout": 10}
 
 engine = create_engine(
