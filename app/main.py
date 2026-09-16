@@ -165,9 +165,11 @@ def cliente_detalle(request: Request, cliente_id: int, db: Session = Depends(get
     saldo = crud.saldo_cliente(db, cliente_id)
     remitos = db.query(models.Remito).filter(models.Remito.cliente_id == cliente_id) \
         .order_by(models.Remito.fecha.desc()).limit(20).all()
+    pendientes = crud.facturaciones_pendientes_cliente(db, cliente_id)
     return templates.TemplateResponse("cliente_detail.html", {
         "request": request, "user": user, "cliente": cliente,
         "movimientos": movimientos, "saldo": saldo, "remitos": remitos,
+        "pendientes": pendientes,
     })
 
 
@@ -283,9 +285,11 @@ def facturacion_view(request: Request, periodo: str = None, db: Session = Depend
         periodo = date.today().strftime("%Y-%m")
     filas = db.query(models.Facturacion).join(models.Cliente).filter(models.Facturacion.periodo == periodo) \
         .options(contains_eager(models.Facturacion.cliente)).order_by(models.Cliente.nombre).all()
+    pagado = crud.pagado_por_facturacion(db, [f.id for f in filas])
     total_periodo = sum(f.total for f in filas)
     return templates.TemplateResponse("facturacion.html", {
-        "request": request, "user": user, "filas": filas, "periodo": periodo, "total_periodo": total_periodo
+        "request": request, "user": user, "filas": filas, "periodo": periodo,
+        "total_periodo": total_periodo, "pagado": pagado,
     })
 
 
@@ -315,11 +319,13 @@ def pago_nuevo(
     fecha: str = Form(...),
     monto: float = Form(...),
     medio_pago: str = Form(""),
+    facturacion_id: str = Form(""),
     observacion: str = Form(""),
     db: Session = Depends(get_db),
 ):
     pago = models.Pago(
         cliente_id=cliente_id,
+        facturacion_id=int(facturacion_id) if facturacion_id else None,
         fecha=datetime.strptime(fecha, "%Y-%m-%d").date(),
         monto=monto, medio_pago=medio_pago, observacion=observacion,
     )

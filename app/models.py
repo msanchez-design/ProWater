@@ -103,6 +103,7 @@ class Pago(Base):
 
     id = Column(Integer, primary_key=True)
     cliente_id = Column(Integer, ForeignKey("clientes.id"), nullable=False)
+    facturacion_id = Column(Integer, ForeignKey("facturaciones.id"), nullable=True)  # None = pago a cuenta
     fecha = Column(Date, default=date.today, nullable=False)
     monto = Column(Float, nullable=False)
     medio_pago = Column(String(50))  # efectivo, transferencia, etc.
@@ -110,3 +111,4 @@ class Pago(Base):
     creado = Column(DateTime, default=datetime.utcnow)
 
     cliente = relationship("Cliente", back_populates="pagos")
+    facturacion = relationship("Facturacion")

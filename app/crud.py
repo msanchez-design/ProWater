@@ -1,6 +1,6 @@
 from datetime import date
 from sqlalchemy import func
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from . import models
 
@@ -66,13 +66,38 @@ def resumen_deuda_clientes(db: Session):
     return resumen
 
 
+def facturaciones_pendientes_cliente(db: Session, cliente_id: int):
+    """Devuelve las facturaciones del cliente que todavía tienen saldo pendiente
+    (total - pagos ya imputados a ese período), de la más reciente a la más vieja.
+    Sirve para el desplegable 'Aplicar pago a...'."""
+    facturaciones = db.query(models.Facturacion).filter(
+        models.Facturacion.cliente_id == cliente_id
+    ).order_by(models.Facturacion.periodo.desc()).all()
+
+    pagado_por_facturacion = dict(
+        db.query(models.Pago.facturacion_id, func.coalesce(func.sum(models.Pago.monto), 0.0))
+        .filter(models.Pago.cliente_id == cliente_id, models.Pago.facturacion_id.isnot(None))
+        .group_by(models.Pago.facturacion_id).all()
+    )
+
+    pendientes = []
+    for f in facturaciones:
+        pendiente = round(f.total - pagado_por_facturacion.get(f.id, 0.0), 2)
+        if pendiente > 0.01:
+            pendientes.append((f, pendiente))
+    return pendientes
+
+
+
 def movimientos_cliente(db: Session, cliente_id: int):
     """Arma el 'libro mayor' del cliente: facturaciones (débito) + pagos (crédito), ordenado
     por fecha, con saldo acumulado corrida."""
     facturaciones = db.query(models.Facturacion).filter(
         models.Facturacion.cliente_id == cliente_id
     ).all()
-    pagos = db.query(models.Pago).filter(models.Pago.cliente_id == cliente_id).all()
+    pagos = db.query(models.Pago).options(joinedload(models.Pago.facturacion)).filter(
+        models.Pago.cliente_id == cliente_id
+    ).all()
 
     movimientos = []
     for f in facturaciones:
@@ -85,10 +110,15 @@ def movimientos_cliente(db: Session, cliente_id: int):
             "credito": 0,
         })
     for p in pagos:
+        detalle = p.medio_pago or "Pago"
+        if p.facturacion_id and p.facturacion:
+            detalle += f" (aplicado a período {p.facturacion.periodo})"
+        else:
+            detalle += " (a cuenta, sin asignar)"
         movimientos.append({
             "fecha": p.fecha.isoformat(),
             "tipo": "Pago",
-            "detalle": p.medio_pago or "Pago",
+            "detalle": detalle,
             "debito": 0,
             "credito": p.monto,
         })
@@ -101,6 +131,16 @@ def movimientos_cliente(db: Session, cliente_id: int):
         m["saldo"] = round(saldo, 2)
 
     return movimientos
+
+
+def pagado_por_facturacion(db: Session, facturacion_ids):
+    """Total pagado (imputado) para cada facturación, en una sola consulta agrupada."""
+    if not facturacion_ids:
+        return {}
+    rows = db.query(models.Pago.facturacion_id, func.coalesce(func.sum(models.Pago.monto), 0.0)) \
+        .filter(models.Pago.facturacion_id.in_(facturacion_ids)) \
+        .group_by(models.Pago.facturacion_id).all()
+    return dict(rows)
 
 
 # ---------- Facturación automática ----------

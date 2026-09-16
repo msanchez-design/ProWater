@@ -41,6 +41,15 @@
       </select>
     </div>
     <div class="field" style="grid-column: 1 / -1">
+      <label>Aplicar a</label>
+      <select name="facturacion_id">
+        <option value="">Pago a cuenta (sin asignar a un período)</option>
+        {% for f, pendiente in pendientes %}
+        <option value="{{ f.id }}">Período {{ f.periodo }} — Debe {{ pendiente | money }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="field" style="grid-column: 1 / -1">
       <label>Observación</label>
       <input type="text" name="observacion">
     </div>

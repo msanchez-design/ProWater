@@ -34,9 +34,11 @@
   <table>
     <tr>
       <th>Cliente</th><th>Abono</th><th>Bid.20 extra</th><th>Bid.10 extra</th>
-      <th>Sifones</th><th>Total</th><th>Facturado</th>
+      <th>Sifones</th><th>Total</th><th>Pagado</th><th>Pendiente</th><th>Facturado</th>
     </tr>
     {% for f in filas %}
+    {% set pag = pagado.get(f.id, 0) %}
+    {% set pend = f.total - pag %}
     <tr>
       <td><a href="/clientes/{{ f.cliente_id }}">{{ f.cliente.nombre }}</a></td>
       <td>{{ f.abono | money }}</td>
@@ -44,6 +46,8 @@
       <td>{{ f.bidones_10_extra }}</td>
       <td>{{ f.sifones }}</td>
       <td><strong>{{ f.total | money }}</strong></td>
+      <td>{{ pag | money }}</td>
+      <td class="{{ 'deuda-positiva' if pend > 0.01 else 'deuda-cero' }}">{{ pend | money }}</td>
       <td>
         <form method="post" action="/facturacion/{{ f.id }}/marcar" style="display:inline">
           <input type="hidden" name="periodo" value="{{ periodo }}">
@@ -54,7 +58,7 @@
       </td>
     </tr>
     {% else %}
-    <tr><td colspan="7">Todavía no generaste la facturación de este período.</td></tr>
+    <tr><td colspan="9">Todavía no generaste la facturación de este período.</td></tr>
     {% endfor %}
   </table>
   </div>
