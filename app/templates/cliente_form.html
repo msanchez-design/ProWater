@@ -66,11 +66,24 @@
       <input type="number" name="cantidad_abonos" value="{{ cliente.cantidad_abonos if cliente else 0 }}">
     </div>
     <div class="field">
+      <label>Lista de precios (opcional)</label>
+      <select name="lista_precios_id" id="select-lista">
+        <option value="">-- Usar precios propios de abajo --</option>
+        {% for l in listas %}
+        <option value="{{ l.id }}" {{ 'selected' if cliente and cliente.lista_precios_id == l.id }}>{{ l.nombre }}</option>
+        {% endfor %}
+      </select>
+    </div>
+  </div>
+  <p id="aviso-lista" style="color:#0e7490;font-size:0.85em;{{ '' if (cliente and cliente.lista_precios_id) else 'display:none' }}">
+    Este cliente usa los precios de la lista seleccionada — los campos de abajo se ignoran
+    al facturar (quedan solo como referencia).
+  </p>
+  <div class="row3">
+    <div class="field">
       <label>Bidones 20L incluidos por CADA abono</label>
       <input type="number" name="bidones_incluidos_abono" value="{{ cliente.bidones_incluidos_abono if cliente else 4 }}">
     </div>
-  </div>
-  <div class="row3">
     <div class="field">
       <label>Precio de UN abono ($)</label>
       <input type="number" step="0.01" name="abono_mensual" value="{{ cliente.abono_mensual if cliente else 0 }}">
@@ -79,19 +92,26 @@
       <label>Precio bidón 20L extra ($)</label>
       <input type="number" step="0.01" name="precio_bidon20" value="{{ cliente.precio_bidon20 if cliente else 0 }}">
     </div>
+  </div>
+  <div class="row3">
     <div class="field">
       <label>Precio bidón 10L extra ($)</label>
       <input type="number" step="0.01" name="precio_bidon10" value="{{ cliente.precio_bidon10 if cliente else 0 }}">
     </div>
-  </div>
-  <div class="row3">
     <div class="field">
       <label>Precio sifón ($)</label>
       <input type="number" step="0.01" name="precio_sifon" value="{{ cliente.precio_sifon if cliente else 0 }}">
     </div>
-    <div class="field"></div>
-    <div class="field"></div>
+    <div class="field">
+      <label>Saldo inicial ($, deuda traída del sistema anterior)</label>
+      <input type="number" step="0.01" name="saldo_inicial" value="{{ cliente.saldo_inicial if cliente else 0 }}">
+    </div>
   </div>
+  <script>
+    document.getElementById('select-lista').addEventListener('change', function () {
+      document.getElementById('aviso-lista').style.display = this.value ? 'block' : 'none';
+    });
+  </script>
 
   <div class="field">
     <label>Observación</label>

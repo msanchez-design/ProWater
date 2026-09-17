@@ -19,6 +19,25 @@ class Usuario(Base):
     creado = Column(DateTime, default=datetime.utcnow)
 
 
+class ListaPrecios(Base):
+    """Lista de precios reutilizable: se la asignás a varios clientes, y si cambian
+    los precios, editás la lista una sola vez en vez de cliente por cliente."""
+    __tablename__ = "listas_precios"
+
+    id = Column(Integer, primary_key=True)
+    nombre = Column(String(150), nullable=False)
+    precio_abono = Column(Float, default=0)
+    bidones_incluidos_abono = Column(Integer, default=4)
+    precio_bidon20 = Column(Float, default=0)
+    precio_bidon10 = Column(Float, default=0)
+    precio_sifon = Column(Float, default=0)
+    activa = Column(Boolean, default=True)
+    observacion = Column(Text)
+    creado = Column(DateTime, default=datetime.utcnow)
+
+    clientes = relationship("Cliente", back_populates="lista_precios")
+
+
 class Cliente(Base):
     __tablename__ = "clientes"
 
@@ -42,8 +61,11 @@ class Cliente(Base):
 
     activo = Column(Boolean, default=True)
     observacion = Column(Text)
+    saldo_inicial = Column(Float, default=0)  # deuda (o a favor, si es negativo) al momento de migrar
+    lista_precios_id = Column(Integer, ForeignKey("listas_precios.id"), nullable=True)
     creado = Column(DateTime, default=datetime.utcnow)
 
+    lista_precios = relationship("ListaPrecios", back_populates="clientes")
     remitos = relationship("Remito", back_populates="cliente")
     facturaciones = relationship("Facturacion", back_populates="cliente")
     pagos = relationship("Pago", back_populates="cliente")
@@ -129,11 +151,13 @@ class Venta(Base):
     cantidad = Column(Integer, default=1)
     precio_unitario = Column(Float, default=0)
     total = Column(Float, default=0)
+    usuario_id = Column(Integer, ForeignKey("usuarios.id"))
     observacion = Column(Text)
     creado = Column(DateTime, default=datetime.utcnow)
 
     cliente = relationship("Cliente")
     producto = relationship("Producto")
+    usuario = relationship("Usuario")
 
 
 class Pago(Base):
@@ -146,8 +170,10 @@ class Pago(Base):
     fecha = Column(Date, default=date.today, nullable=False)
     monto = Column(Float, nullable=False)
     medio_pago = Column(String(50))  # efectivo, transferencia, etc.
+    usuario_id = Column(Integer, ForeignKey("usuarios.id"))
     observacion = Column(Text)
     creado = Column(DateTime, default=datetime.utcnow)
 
     cliente = relationship("Cliente", back_populates="pagos")
     facturacion = relationship("Facturacion")
+    usuario = relationship("Usuario")

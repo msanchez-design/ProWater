@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>{{ "Editar lista de precios" if lista else "Nueva lista de precios" }}</h1>
+
+<form method="post" action="{{ ('/listas-precios/' ~ lista.id ~ '/editar') if lista else '/listas-precios/nuevo' }}" class="card">
+  <div class="field">
+    <label>Nombre de la lista</label>
+    <input type="text" name="nombre" required placeholder="Ej: Lista general 2026"
+           value="{{ lista.nombre if lista else '' }}">
+  </div>
+  <div class="row3">
+    <div class="field">
+      <label>Precio de UN abono ($)</label>
+      <input type="number" step="0.01" name="precio_abono" value="{{ lista.precio_abono if lista else 0 }}">
+    </div>
+    <div class="field">
+      <label>Bidones 20L incluidos por abono</label>
+      <input type="number" name="bidones_incluidos_abono" value="{{ lista.bidones_incluidos_abono if lista else 4 }}">
+    </div>
+    <div class="field">
+      <label>Precio bidón 20L extra ($)</label>
+      <input type="number" step="0.01" name="precio_bidon20" value="{{ lista.precio_bidon20 if lista else 0 }}">
+    </div>
+  </div>
+  <div class="row3">
+    <div class="field">
+      <label>Precio bidón 10L extra ($)</label>
+      <input type="number" step="0.01" name="precio_bidon10" value="{{ lista.precio_bidon10 if lista else 0 }}">
+    </div>
+    <div class="field">
+      <label>Precio sifón ($)</label>
+      <input type="number" step="0.01" name="precio_sifon" value="{{ lista.precio_sifon if lista else 0 }}">
+    </div>
+    <div class="field"></div>
+  </div>
+  <div class="field">
+    <label>Observación</label>
+    <textarea name="observacion" rows="2">{{ lista.observacion if lista else '' }}</textarea>
+  </div>
+  {% if lista %}
+  <div class="field">
+    <label><input type="checkbox" name="activa" style="width:auto;display:inline-block" {{ 'checked' if lista.activa }}> Lista activa</label>
+  </div>
+  {% endif %}
+  <button type="submit">Guardar</button>
+  <a href="/listas-precios" class="btn btn-secundario">Cancelar</a>
+</form>
+{% endblock %}

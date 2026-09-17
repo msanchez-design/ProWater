@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Nuevo usuario</h1>
+
+{% if error %}<div class="error">{{ error }}</div>{% endif %}
+
+<form method="post" action="/usuarios/nuevo" class="card">
+  <div class="field">
+    <label>Nombre</label>
+    <input type="text" name="nombre" required>
+  </div>
+  <div class="field">
+    <label>Email</label>
+    <input type="email" name="email" required>
+  </div>
+  <div class="field">
+    <label>Contraseña</label>
+    <input type="password" name="password" required>
+  </div>
+  <div class="field">
+    <label>Rol</label>
+    <select name="rol">
+      <option value="repartidor">Repartidor (carga remitos, pagos, ventas)</option>
+      <option value="admin">Administrador (acceso total, incluida gestión de usuarios)</option>
+    </select>
+  </div>
+  <button type="submit">Crear usuario</button>
+  <a href="/usuarios" class="btn btn-secundario">Cancelar</a>
+</form>
+{% endblock %}

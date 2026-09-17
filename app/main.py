@@ -56,6 +56,10 @@ def usuario_o_redirect(request: Request, db: Session):
     return auth.usuario_actual(request, db)
 
 
+def es_admin(user) -> bool:
+    return bool(user and user.rol == "admin")
+
+
 # ---------------- LOGIN ----------------
 
 @app.get("/login", response_class=HTMLResponse)
@@ -122,7 +126,10 @@ def cliente_nuevo_form(request: Request, db: Session = Depends(get_db)):
     user = usuario_o_redirect(request, db)
     if not user:
         return RedirectResponse(url="/login", status_code=303)
-    return templates.TemplateResponse("cliente_form.html", {"request": request, "user": user, "cliente": None})
+    listas = crud.listar_listas_precios(db, solo_activas=False)
+    return templates.TemplateResponse("cliente_form.html", {
+        "request": request, "user": user, "cliente": None, "listas": listas
+    })
 
 
 @app.post("/clientes/nuevo")
@@ -142,6 +149,8 @@ def cliente_nuevo_submit(
     precio_bidon20: float = Form(0),
     precio_bidon10: float = Form(0),
     precio_sifon: float = Form(0),
+    lista_precios_id: str = Form(""),
+    saldo_inicial: float = Form(0),
     observacion: str = Form(""),
     db: Session = Depends(get_db),
 ):
@@ -151,6 +160,8 @@ def cliente_nuevo_submit(
         cantidad_dispensers=cantidad_dispensers, cantidad_abonos=cantidad_abonos,
         bidones_incluidos_abono=bidones_incluidos_abono, abono_mensual=abono_mensual,
         precio_bidon20=precio_bidon20, precio_bidon10=precio_bidon10, precio_sifon=precio_sifon,
+        lista_precios_id=int(lista_precios_id) if lista_precios_id else None,
+        saldo_inicial=saldo_inicial,
         observacion=observacion,
     )
     db.add(cliente)
@@ -159,7 +170,7 @@ def cliente_nuevo_submit(
 
 
 @app.get("/clientes/{cliente_id}", response_class=HTMLResponse)
-def cliente_detalle(request: Request, cliente_id: int, db: Session = Depends(get_db)):
+def cliente_detalle(request: Request, cliente_id: int, error: str = None, db: Session = Depends(get_db)):
     user = usuario_o_redirect(request, db)
     if not user:
         return RedirectResponse(url="/login", status_code=303)
@@ -173,7 +184,7 @@ def cliente_detalle(request: Request, cliente_id: int, db: Session = Depends(get
     return templates.TemplateResponse("cliente_detail.html", {
         "request": request, "user": user, "cliente": cliente,
         "movimientos": movimientos, "saldo": saldo, "remitos": remitos,
-        "pendientes": pendientes, "productos": productos,
+        "pendientes": pendientes, "productos": productos, "error": error,
     })
 
 
@@ -183,7 +194,10 @@ def cliente_editar_form(request: Request, cliente_id: int, db: Session = Depends
     if not user:
         return RedirectResponse(url="/login", status_code=303)
     cliente = crud.obtener_cliente(db, cliente_id)
-    return templates.TemplateResponse("cliente_form.html", {"request": request, "user": user, "cliente": cliente})
+    listas = crud.listar_listas_precios(db, solo_activas=False)
+    return templates.TemplateResponse("cliente_form.html", {
+        "request": request, "user": user, "cliente": cliente, "listas": listas
+    })
 
 
 @app.post("/clientes/{cliente_id}/editar")
@@ -204,6 +218,8 @@ def cliente_editar_submit(
     precio_bidon20: float = Form(0),
     precio_bidon10: float = Form(0),
     precio_sifon: float = Form(0),
+    lista_precios_id: str = Form(""),
+    saldo_inicial: float = Form(0),
     observacion: str = Form(""),
     activo: str = Form(None),
     db: Session = Depends(get_db),
@@ -223,10 +239,20 @@ def cliente_editar_submit(
     cliente.precio_bidon20 = precio_bidon20
     cliente.precio_bidon10 = precio_bidon10
     cliente.precio_sifon = precio_sifon
+    cliente.lista_precios_id = int(lista_precios_id) if lista_precios_id else None
+    cliente.saldo_inicial = saldo_inicial
     cliente.observacion = observacion
     cliente.activo = bool(activo)
     db.commit()
     return RedirectResponse(url=f"/clientes/{cliente_id}", status_code=303)
+
+
+@app.post("/clientes/{cliente_id}/eliminar")
+def cliente_eliminar(cliente_id: int, db: Session = Depends(get_db)):
+    ok, motivo = crud.eliminar_cliente(db, cliente_id)
+    if ok:
+        return RedirectResponse(url="/clientes?eliminado=1", status_code=303)
+    return RedirectResponse(url=f"/clientes/{cliente_id}?error={motivo}", status_code=303)
 
 
 # ---------------- REMITOS ----------------
@@ -323,6 +349,7 @@ def facturacion_marcar(fact_id: int, periodo: str = Form(...), db: Session = Dep
 
 @app.post("/clientes/{cliente_id}/pagos/nuevo")
 def pago_nuevo(
+    request: Request,
     cliente_id: int,
     fecha: str = Form(...),
     monto: float = Form(...),
@@ -331,11 +358,13 @@ def pago_nuevo(
     observacion: str = Form(""),
     db: Session = Depends(get_db),
 ):
+    user = usuario_o_redirect(request, db)
     pago = models.Pago(
         cliente_id=cliente_id,
         facturacion_id=int(facturacion_id) if facturacion_id else None,
         fecha=datetime.strptime(fecha, "%Y-%m-%d").date(),
         monto=monto, medio_pago=medio_pago, observacion=observacion,
+        usuario_id=user.id if user else None,
     )
     db.add(pago)
     db.commit()
@@ -381,6 +410,7 @@ def producto_toggle(producto_id: int, db: Session = Depends(get_db)):
 
 @app.post("/clientes/{cliente_id}/ventas/nuevo")
 def venta_nueva(
+    request: Request,
     cliente_id: int,
     fecha: str = Form(...),
     producto_id: str = Form(""),
@@ -390,6 +420,7 @@ def venta_nueva(
     observacion: str = Form(""),
     db: Session = Depends(get_db),
 ):
+    user = usuario_o_redirect(request, db)
     nombre_final = nombre_producto
     if producto_id:
         producto = db.query(models.Producto).get(int(producto_id))
@@ -401,5 +432,141 @@ def venta_nueva(
         nombre_producto=nombre_final or "Producto",
         fecha=datetime.strptime(fecha, "%Y-%m-%d").date(),
         cantidad=cantidad, precio_unitario=precio_unitario, observacion=observacion,
+        usuario_id=user.id if user else None,
     )
     return RedirectResponse(url=f"/clientes/{cliente_id}", status_code=303)
+
+
+# ---------------- LISTAS DE PRECIOS ----------------
+
+@app.get("/listas-precios", response_class=HTMLResponse)
+def listas_precios_view(request: Request, db: Session = Depends(get_db)):
+    user = usuario_o_redirect(request, db)
+    if not user:
+        return RedirectResponse(url="/login", status_code=303)
+    listas = crud.listar_listas_precios(db, solo_activas=False)
+    return templates.TemplateResponse("listas_precios_list.html", {"request": request, "user": user, "listas": listas})
+
+
+@app.get("/listas-precios/nuevo", response_class=HTMLResponse)
+def lista_precios_nueva_form(request: Request, db: Session = Depends(get_db)):
+    user = usuario_o_redirect(request, db)
+    if not user:
+        return RedirectResponse(url="/login", status_code=303)
+    return templates.TemplateResponse("lista_precios_form.html", {"request": request, "user": user, "lista": None})
+
+
+@app.post("/listas-precios/nuevo")
+def lista_precios_nueva_submit(
+    nombre: str = Form(...),
+    precio_abono: float = Form(0),
+    bidones_incluidos_abono: int = Form(4),
+    precio_bidon20: float = Form(0),
+    precio_bidon10: float = Form(0),
+    precio_sifon: float = Form(0),
+    observacion: str = Form(""),
+    db: Session = Depends(get_db),
+):
+    db.add(models.ListaPrecios(
+        nombre=nombre, precio_abono=precio_abono, bidones_incluidos_abono=bidones_incluidos_abono,
+        precio_bidon20=precio_bidon20, precio_bidon10=precio_bidon10, precio_sifon=precio_sifon,
+        observacion=observacion,
+    ))
+    db.commit()
+    return RedirectResponse(url="/listas-precios", status_code=303)
+
+
+@app.get("/listas-precios/{lista_id}/editar", response_class=HTMLResponse)
+def lista_precios_editar_form(request: Request, lista_id: int, db: Session = Depends(get_db)):
+    user = usuario_o_redirect(request, db)
+    if not user:
+        return RedirectResponse(url="/login", status_code=303)
+    lista = db.query(models.ListaPrecios).get(lista_id)
+    return templates.TemplateResponse("lista_precios_form.html", {"request": request, "user": user, "lista": lista})
+
+
+@app.post("/listas-precios/{lista_id}/editar")
+def lista_precios_editar_submit(
+    lista_id: int,
+    nombre: str = Form(...),
+    precio_abono: float = Form(0),
+    bidones_incluidos_abono: int = Form(4),
+    precio_bidon20: float = Form(0),
+    precio_bidon10: float = Form(0),
+    precio_sifon: float = Form(0),
+    observacion: str = Form(""),
+    activa: str = Form(None),
+    db: Session = Depends(get_db),
+):
+    lista = db.query(models.ListaPrecios).get(lista_id)
+    lista.nombre = nombre
+    lista.precio_abono = precio_abono
+    lista.bidones_incluidos_abono = bidones_incluidos_abono
+    lista.precio_bidon20 = precio_bidon20
+    lista.precio_bidon10 = precio_bidon10
+    lista.precio_sifon = precio_sifon
+    lista.observacion = observacion
+    lista.activa = bool(activa)
+    db.commit()
+    return RedirectResponse(url="/listas-precios", status_code=303)
+
+
+# ---------------- USUARIOS (solo admin) ----------------
+
+@app.get("/usuarios", response_class=HTMLResponse)
+def usuarios_list(request: Request, db: Session = Depends(get_db)):
+    user = usuario_o_redirect(request, db)
+    if not user:
+        return RedirectResponse(url="/login", status_code=303)
+    if not es_admin(user):
+        return HTMLResponse("<p style='padding:24px;font-family:sans-serif'>No tenés permisos para ver esta página "
+                             "(solo administradores). <a href='/'>Volver</a></p>", status_code=403)
+    usuarios = crud.listar_usuarios(db)
+    return templates.TemplateResponse("usuarios_list.html", {"request": request, "user": user, "usuarios": usuarios})
+
+
+@app.get("/usuarios/nuevo", response_class=HTMLResponse)
+def usuario_nuevo_form(request: Request, db: Session = Depends(get_db)):
+    user = usuario_o_redirect(request, db)
+    if not user:
+        return RedirectResponse(url="/login", status_code=303)
+    if not es_admin(user):
+        return HTMLResponse("<p style='padding:24px;font-family:sans-serif'>No tenés permisos para esta acción "
+                             "(solo administradores). <a href='/'>Volver</a></p>", status_code=403)
+    return templates.TemplateResponse("usuario_form.html", {"request": request, "user": user, "error": None})
+
+
+@app.post("/usuarios/nuevo")
+def usuario_nuevo_submit(
+    request: Request,
+    nombre: str = Form(...),
+    email: str = Form(...),
+    password: str = Form(...),
+    rol: str = Form("repartidor"),
+    db: Session = Depends(get_db),
+):
+    user = usuario_o_redirect(request, db)
+    if not es_admin(user):
+        return RedirectResponse(url="/", status_code=303)
+    existe = db.query(models.Usuario).filter(models.Usuario.email == email).first()
+    if existe:
+        return templates.TemplateResponse("usuario_form.html", {
+            "request": request, "user": user, "error": "Ya existe un usuario con ese email."
+        })
+    nuevo = models.Usuario(nombre=nombre, email=email, password_hash=auth.hash_password(password), rol=rol)
+    db.add(nuevo)
+    db.commit()
+    return RedirectResponse(url="/usuarios", status_code=303)
+
+
+@app.post("/usuarios/{usuario_id}/toggle")
+def usuario_toggle(request: Request, usuario_id: int, db: Session = Depends(get_db)):
+    user = usuario_o_redirect(request, db)
+    if not es_admin(user):
+        return RedirectResponse(url="/", status_code=303)
+    objetivo = db.query(models.Usuario).get(usuario_id)
+    if objetivo.id == user.id:
+        return RedirectResponse(url="/usuarios?error=No te podés desactivar a vos mismo", status_code=303)
+    objetivo.activo = not objetivo.activo
+    db.commit()
+    return RedirectResponse(url="/usuarios", status_code=303)

@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="top-actions">
+  <h1>Listas de precios</h1>
+  <a class="btn" href="/listas-precios/nuevo">+ Nueva lista</a>
+</div>
+<p style="color:#667;font-size:0.9em">
+  Asigná una lista a varios clientes desde su ficha (Editar > Lista de precios). El día
+  que cambien los precios, editás la lista una sola vez acá y se actualiza para todos
+  los clientes que la usan, sin tocar uno por uno.
+</p>
+
+<div class="tabla-wrap">
+<table>
+  <tr><th>Nombre</th><th>Precio abono</th><th>Bid.20 incl.</th><th>Bid.20 extra</th><th>Bid.10 extra</th><th>Sifón</th><th>Estado</th><th></th></tr>
+  {% for l in listas %}
+  <tr>
+    <td>{{ l.nombre }}</td>
+    <td>{{ l.precio_abono | money }}</td>
+    <td>{{ l.bidones_incluidos_abono }}</td>
+    <td>{{ l.precio_bidon20 | money }}</td>
+    <td>{{ l.precio_bidon10 | money }}</td>
+    <td>{{ l.precio_sifon | money }}</td>
+    <td>{{ "Activa" if l.activa else "Inactiva" }}</td>
+    <td><a class="btn-chico btn-secundario" href="/listas-precios/{{ l.id }}/editar">Editar</a></td>
+  </tr>
+  {% else %}
+  <tr><td colspan="8">Todavía no creaste ninguna lista de precios.</td></tr>
+  {% endfor %}
+</table>
+</div>
+{% endblock %}

@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="top-actions">
+  <h1>Usuarios</h1>
+  <a class="btn" href="/usuarios/nuevo">+ Nuevo usuario</a>
+</div>
+
+<div class="tabla-wrap">
+<table>
+  <tr><th>Nombre</th><th>Email</th><th>Rol</th><th>Estado</th><th></th></tr>
+  {% for u in usuarios %}
+  <tr>
+    <td>{{ u.nombre }}</td>
+    <td>{{ u.email }}</td>
+    <td>{{ "Administrador" if u.rol == "admin" else "Repartidor" }}</td>
+    <td>{{ "Activo" if u.activo else "Inactivo" }}</td>
+    <td>
+      <form method="post" action="/usuarios/{{ u.id }}/toggle" style="display:inline">
+        <button class="btn-chico btn-secundario" type="submit">
+          {{ "Desactivar" if u.activo else "Activar" }}
+        </button>
+      </form>
+    </td>
+  </tr>
+  {% else %}
+  <tr><td colspan="5">No hay usuarios cargados.</td></tr>
+  {% endfor %}
+</table>
+</div>
+{% endblock %}

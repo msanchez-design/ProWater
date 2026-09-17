@@ -16,6 +16,8 @@
     <a href="/remitos">Remitos</a>
     <a href="/facturacion">Facturación</a>
     <a href="/productos">Productos</a>
+    <a href="/listas-precios">Listas de precios</a>
+    {% if user.rol == 'admin' %}<a href="/usuarios">Usuarios</a>{% endif %}
     <a href="/logout" class="logout">Salir ({{ user.nombre }})</a>
   </div>
 </nav>
