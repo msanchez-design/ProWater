@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="top-actions">
+  <h1>Productos de venta</h1>
+  <a class="btn" href="/productos/nuevo">+ Nuevo producto</a>
+</div>
+<p style="color:#667;font-size:0.9em">
+  Estos son productos que se venden aparte del abono mensual (bidón con canilla, dispenser
+  de agua natural, etc.). Se registran como una venta puntual desde la ficha de cada cliente.
+</p>
+
+<div class="tabla-wrap">
+<table>
+  <tr><th>Nombre</th><th>Precio</th><th>Estado</th><th></th></tr>
+  {% for p in productos %}
+  <tr>
+    <td>{{ p.nombre }}</td>
+    <td>{{ p.precio | money }}</td>
+    <td>{{ "Activo" if p.activo else "Inactivo" }}</td>
+    <td>
+      <form method="post" action="/productos/{{ p.id }}/toggle" style="display:inline">
+        <button class="btn-chico btn-secundario" type="submit">
+          {{ "Desactivar" if p.activo else "Activar" }}
+        </button>
+      </form>
+    </td>
+  </tr>
+  {% else %}
+  <tr><td colspan="4">Todavía no cargaste ningún producto.</td></tr>
+  {% endfor %}
+</table>
+</div>
+{% endblock %}

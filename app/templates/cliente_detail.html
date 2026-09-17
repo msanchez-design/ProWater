@@ -16,7 +16,7 @@
   </div>
   <div class="stat">
     <div class="valor">{{ cliente.cantidad_dispensers }}</div>
-    <div class="label">Dispensers instalados</div>
+    <div class="label">Dispensers instalados ({{ cliente.cantidad_abonos }} abonos)</div>
   </div>
 </div>
 
@@ -58,6 +58,52 @@
     </div>
   </form>
 </div>
+
+<div class="card">
+  <h2>Registrar venta (bidón con canilla, dispenser de agua natural, etc.)</h2>
+  <form method="post" action="/clientes/{{ cliente.id }}/ventas/nuevo" class="row3" id="form-venta">
+    <div class="field">
+      <label>Producto</label>
+      <select name="producto_id" id="venta-producto">
+        <option value="">-- Elegir del catálogo --</option>
+        {% for p in productos %}
+        <option value="{{ p.id }}" data-precio="{{ p.precio }}">{{ p.nombre }} ({{ p.precio | money }})</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="field">
+      <label>O nombre libre (si no está en el catálogo)</label>
+      <input type="text" name="nombre_producto" placeholder="Ej: Bidón con canilla">
+    </div>
+    <div class="field">
+      <label>Fecha</label>
+      <input type="date" name="fecha" required>
+    </div>
+    <div class="field">
+      <label>Cantidad</label>
+      <input type="number" name="cantidad" value="1" min="1" id="venta-cantidad">
+    </div>
+    <div class="field">
+      <label>Precio unitario ($)</label>
+      <input type="number" step="0.01" name="precio_unitario" value="0" id="venta-precio">
+    </div>
+    <div class="field">
+      <label>Observación</label>
+      <input type="text" name="observacion">
+    </div>
+    <div style="grid-column: 1 / -1">
+      <button type="submit">Registrar venta</button>
+    </div>
+  </form>
+</div>
+<script>
+  // Al elegir un producto del catálogo, autocompleta el precio (se puede editar igual)
+  document.getElementById('venta-producto').addEventListener('change', function () {
+    const opt = this.options[this.selectedIndex];
+    const precio = opt.getAttribute('data-precio');
+    if (precio) document.getElementById('venta-precio').value = precio;
+  });
+</script>
 
 <div class="card">
   <h2>Estado de cuenta</h2>

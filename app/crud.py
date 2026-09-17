@@ -23,12 +23,17 @@ def obtener_cliente(db: Session, cliente_id: int):
 # ---------- Saldo / cuenta corriente ----------
 
 def saldos_todos(db: Session, cliente_ids=None) -> dict:
-    """Calcula el saldo de MUCHOS clientes de una sola vez (2 consultas agrupadas en
-    vez de 1 consulta por cliente), para que las listas no se pongan lentas."""
+    """Calcula el saldo de MUCHOS clientes de una sola vez (consultas agrupadas en
+    vez de 1 consulta por cliente), para que las listas no se pongan lentas.
+    Saldo = facturaciones + ventas - pagos."""
     q_fact = db.query(
         models.Facturacion.cliente_id,
         func.coalesce(func.sum(models.Facturacion.total), 0.0),
     ).group_by(models.Facturacion.cliente_id)
+    q_ventas = db.query(
+        models.Venta.cliente_id,
+        func.coalesce(func.sum(models.Venta.total), 0.0),
+    ).group_by(models.Venta.cliente_id)
     q_pagos = db.query(
         models.Pago.cliente_id,
         func.coalesce(func.sum(models.Pago.monto), 0.0),
@@ -36,25 +41,32 @@ def saldos_todos(db: Session, cliente_ids=None) -> dict:
 
     if cliente_ids is not None:
         q_fact = q_fact.filter(models.Facturacion.cliente_id.in_(cliente_ids))
+        q_ventas = q_ventas.filter(models.Venta.cliente_id.in_(cliente_ids))
         q_pagos = q_pagos.filter(models.Pago.cliente_id.in_(cliente_ids))
 
     facturado = dict(q_fact.all())
+    vendido = dict(q_ventas.all())
     pagado = dict(q_pagos.all())
 
-    ids = set(facturado.keys()) | set(pagado.keys())
+    ids = set(facturado.keys()) | set(vendido.keys()) | set(pagado.keys())
     if cliente_ids is not None:
         ids |= set(cliente_ids)
 
-    return {cid: round(facturado.get(cid, 0) - pagado.get(cid, 0), 2) for cid in ids}
+    return {
+        cid: round(facturado.get(cid, 0) + vendido.get(cid, 0) - pagado.get(cid, 0), 2)
+        for cid in ids
+    }
 
 
 def saldo_cliente(db: Session, cliente_id: int) -> float:
-    """Saldo = total facturado - total pagado. Positivo = el cliente debe."""
+    """Saldo = facturaciones + ventas - pagos. Positivo = el cliente debe."""
     total_facturado = db.query(func.coalesce(func.sum(models.Facturacion.total), 0.0)) \
         .filter(models.Facturacion.cliente_id == cliente_id).scalar()
+    total_vendido = db.query(func.coalesce(func.sum(models.Venta.total), 0.0)) \
+        .filter(models.Venta.cliente_id == cliente_id).scalar()
     total_pagado = db.query(func.coalesce(func.sum(models.Pago.monto), 0.0)) \
         .filter(models.Pago.cliente_id == cliente_id).scalar()
-    return round((total_facturado or 0) - (total_pagado or 0), 2)
+    return round((total_facturado or 0) + (total_vendido or 0) - (total_pagado or 0), 2)
 
 
 def resumen_deuda_clientes(db: Session):
@@ -90,11 +102,12 @@ def facturaciones_pendientes_cliente(db: Session, cliente_id: int):
 
 
 def movimientos_cliente(db: Session, cliente_id: int):
-    """Arma el 'libro mayor' del cliente: facturaciones (débito) + pagos (crédito), ordenado
-    por fecha, con saldo acumulado corrida."""
+    """Arma el 'libro mayor' del cliente: facturaciones + ventas (débito) y pagos (crédito),
+    ordenado por fecha, con saldo acumulado corrido."""
     facturaciones = db.query(models.Facturacion).filter(
         models.Facturacion.cliente_id == cliente_id
     ).all()
+    ventas = db.query(models.Venta).filter(models.Venta.cliente_id == cliente_id).all()
     pagos = db.query(models.Pago).options(joinedload(models.Pago.facturacion)).filter(
         models.Pago.cliente_id == cliente_id
     ).all()
@@ -107,6 +120,15 @@ def movimientos_cliente(db: Session, cliente_id: int):
             "tipo": "Facturación",
             "detalle": f"Período {f.periodo}" + (" (facturado)" if f.facturado else " (pendiente)"),
             "debito": f.total,
+            "credito": 0,
+        })
+    for v in ventas:
+        cant = f"{v.cantidad} x " if (v.cantidad or 1) != 1 else ""
+        movimientos.append({
+            "fecha": v.fecha.isoformat(),
+            "tipo": "Venta",
+            "detalle": f"{cant}{v.nombre_producto}",
+            "debito": v.total,
             "credito": 0,
         })
     for p in pagos:
@@ -141,6 +163,32 @@ def pagado_por_facturacion(db: Session, facturacion_ids):
         .filter(models.Pago.facturacion_id.in_(facturacion_ids)) \
         .group_by(models.Pago.facturacion_id).all()
     return dict(rows)
+
+
+# ---------- Productos y ventas puntuales ----------
+
+def listar_productos(db: Session, solo_activos: bool = True):
+    q = db.query(models.Producto)
+    if solo_activos:
+        q = q.filter(models.Producto.activo == True)  # noqa: E712
+    return q.order_by(models.Producto.nombre).all()
+
+
+def registrar_venta(db: Session, cliente_id: int, producto_id, nombre_producto: str,
+                     fecha, cantidad: int, precio_unitario: float, observacion: str = ""):
+    venta = models.Venta(
+        cliente_id=cliente_id,
+        producto_id=producto_id or None,
+        nombre_producto=nombre_producto,
+        fecha=fecha,
+        cantidad=cantidad,
+        precio_unitario=precio_unitario,
+        total=round(cantidad * precio_unitario, 2),
+        observacion=observacion,
+    )
+    db.add(venta)
+    db.commit()
+    return venta
 
 
 # ---------- Facturación automática ----------
@@ -183,17 +231,25 @@ def generar_facturacion_periodo(db: Session, periodo: str, quien_factura: str = 
             saltadas += 1
             continue  # no pisamos algo que ya se facturó y quedó cerrado
 
+        cant_abonos = cliente.cantidad_abonos or 0
+        abono_total = cant_abonos * (cliente.abono_mensual or 0)
+        incluidos = cant_abonos * (cliente.bidones_incluidos_abono or 0)
+        b20_extra = max(0, b20 - incluidos)  # solo se cobra lo que superó lo incluido en los abonos
+
         total = (
-            (cliente.abono_mensual or 0)
-            + b20 * (cliente.precio_bidon20 or 0)
+            abono_total
+            + b20_extra * (cliente.precio_bidon20 or 0)
             + b10 * (cliente.precio_bidon10 or 0)
             + sif * (cliente.precio_sifon or 0)
         )
 
         if existente:
             existente.dispensers = cliente.cantidad_dispensers
-            existente.abono = cliente.abono_mensual
-            existente.bidones_20_extra = b20
+            existente.cantidad_abonos = cant_abonos
+            existente.abono = abono_total
+            existente.bidones_20_incluidos = incluidos
+            existente.bidones_20_entregados = b20
+            existente.bidones_20_extra = b20_extra
             existente.precio_bidon20 = cliente.precio_bidon20
             existente.bidones_10_extra = b10
             existente.precio_bidon10 = cliente.precio_bidon10
@@ -208,8 +264,11 @@ def generar_facturacion_periodo(db: Session, periodo: str, quien_factura: str = 
                 cliente_id=cliente.id,
                 periodo=periodo,
                 dispensers=cliente.cantidad_dispensers,
-                abono=cliente.abono_mensual,
-                bidones_20_extra=b20,
+                cantidad_abonos=cant_abonos,
+                abono=abono_total,
+                bidones_20_incluidos=incluidos,
+                bidones_20_entregados=b20,
+                bidones_20_extra=b20_extra,
                 precio_bidon20=cliente.precio_bidon20,
                 bidones_10_extra=b10,
                 precio_bidon10=cliente.precio_bidon10,

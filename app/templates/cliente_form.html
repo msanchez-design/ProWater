@@ -50,18 +50,31 @@
   </div>
 
   <h2>Abono y precios</h2>
+  <p style="color:#667;font-size:0.85em;margin-top:-6px">
+    Cada ABONO = 1 dispenser + los bidones de 20L incluidos por mes. Si el cliente tiene
+    2 dispensers con abono, poné "Cantidad de abonos" = 2 (así se cobran 2 abonos y se
+    incluyen el doble de bidones). Si hay algún dispenser sin abono asociado, dejá
+    "Cantidad de dispensers" más alta que "Cantidad de abonos".
+  </p>
   <div class="row3">
     <div class="field">
-      <label>Cantidad de dispensers</label>
+      <label>Cantidad de dispensers instalados</label>
       <input type="number" name="cantidad_dispensers" value="{{ cliente.cantidad_dispensers if cliente else 0 }}">
     </div>
     <div class="field">
-      <label>Abono mensual ($)</label>
-      <input type="number" step="0.01" name="abono_mensual" value="{{ cliente.abono_mensual if cliente else 0 }}">
+      <label>Cantidad de abonos que factura</label>
+      <input type="number" name="cantidad_abonos" value="{{ cliente.cantidad_abonos if cliente else 0 }}">
     </div>
-    <div class="field"></div>
+    <div class="field">
+      <label>Bidones 20L incluidos por CADA abono</label>
+      <input type="number" name="bidones_incluidos_abono" value="{{ cliente.bidones_incluidos_abono if cliente else 4 }}">
+    </div>
   </div>
   <div class="row3">
+    <div class="field">
+      <label>Precio de UN abono ($)</label>
+      <input type="number" step="0.01" name="abono_mensual" value="{{ cliente.abono_mensual if cliente else 0 }}">
+    </div>
     <div class="field">
       <label>Precio bidón 20L extra ($)</label>
       <input type="number" step="0.01" name="precio_bidon20" value="{{ cliente.precio_bidon20 if cliente else 0 }}">
@@ -70,10 +83,14 @@
       <label>Precio bidón 10L extra ($)</label>
       <input type="number" step="0.01" name="precio_bidon10" value="{{ cliente.precio_bidon10 if cliente else 0 }}">
     </div>
+  </div>
+  <div class="row3">
     <div class="field">
       <label>Precio sifón ($)</label>
       <input type="number" step="0.01" name="precio_sifon" value="{{ cliente.precio_sifon if cliente else 0 }}">
     </div>
+    <div class="field"></div>
+    <div class="field"></div>
   </div>
 
   <div class="field">

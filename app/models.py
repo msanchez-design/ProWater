@@ -31,9 +31,12 @@ class Cliente(Base):
     direccion = Column(String(250))
     barrio = Column(String(100))
 
-    cantidad_dispensers = Column(Integer, default=0)
-    abono_mensual = Column(Float, default=0)       # precio del abono base (incluye X bidones)
-    precio_bidon20 = Column(Float, default=0)      # precio de bidón 20L extra (fuera de abono)
+    cantidad_dispensers = Column(Integer, default=0)  # dispensers instalados (dato físico/logístico)
+    cantidad_abonos = Column(Integer, default=0)       # cuántos abonos factura (normalmente = dispensers,
+                                                        # pero puede diferir por excepciones)
+    abono_mensual = Column(Float, default=0)       # precio de UN abono (1 dispenser + bidones incluidos)
+    bidones_incluidos_abono = Column(Integer, default=4)  # bidones 20L incluidos por CADA abono
+    precio_bidon20 = Column(Float, default=0)      # precio de bidón 20L extra (por encima de lo incluido)
     precio_bidon10 = Column(Float, default=0)
     precio_sifon = Column(Float, default=0)
 
@@ -78,8 +81,11 @@ class Facturacion(Base):
     periodo = Column(String(7), nullable=False)  # formato "YYYY-MM"
 
     dispensers = Column(Integer, default=0)
-    abono = Column(Float, default=0)
-    bidones_20_extra = Column(Integer, default=0)
+    cantidad_abonos = Column(Integer, default=0)         # abonos facturados este período
+    abono = Column(Float, default=0)                      # total de abono (cantidad_abonos * precio unitario)
+    bidones_20_incluidos = Column(Integer, default=0)    # bidones 20L incluidos por los abonos, ese período
+    bidones_20_entregados = Column(Integer, default=0)   # bidones 20L que salieron según remitos ese período
+    bidones_20_extra = Column(Integer, default=0)        # lo que se cobra aparte (entregados - incluidos)
     precio_bidon20 = Column(Float, default=0)
     bidones_10_extra = Column(Integer, default=0)
     precio_bidon10 = Column(Float, default=0)
@@ -95,6 +101,39 @@ class Facturacion(Base):
     creado = Column(DateTime, default=datetime.utcnow)
 
     cliente = relationship("Cliente", back_populates="facturaciones")
+
+
+class Producto(Base):
+    """Catálogo de productos que se venden aparte del abono (no son parte del reparto
+    mensual): bidón con canilla, dispenser de agua natural, etc."""
+    __tablename__ = "productos"
+
+    id = Column(Integer, primary_key=True)
+    nombre = Column(String(150), nullable=False)
+    precio = Column(Float, default=0)
+    activo = Column(Boolean, default=True)
+    observacion = Column(Text)
+    creado = Column(DateTime, default=datetime.utcnow)
+
+
+class Venta(Base):
+    """Venta puntual de un producto a un cliente (no es parte del abono mensual).
+    Queda en la cuenta corriente del cliente igual que una facturación."""
+    __tablename__ = "ventas"
+
+    id = Column(Integer, primary_key=True)
+    cliente_id = Column(Integer, ForeignKey("clientes.id"), nullable=False)
+    producto_id = Column(Integer, ForeignKey("productos.id"), nullable=True)
+    nombre_producto = Column(String(150))  # copia del nombre al momento de vender
+    fecha = Column(Date, default=date.today, nullable=False)
+    cantidad = Column(Integer, default=1)
+    precio_unitario = Column(Float, default=0)
+    total = Column(Float, default=0)
+    observacion = Column(Text)
+    creado = Column(DateTime, default=datetime.utcnow)
+
+    cliente = relationship("Cliente")
+    producto = relationship("Producto")
 
 
 class Pago(Base):

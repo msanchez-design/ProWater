@@ -143,6 +143,9 @@ def importar(path_facturacion, path_deuda):
 
             if datos.get("dispensers") is not None:
                 cliente.cantidad_dispensers = int(datos["dispensers"])
+                # Por defecto asumimos 1 abono por dispenser; revisar excepciones a mano.
+                if not cliente.cantidad_abonos:
+                    cliente.cantidad_abonos = int(datos["dispensers"])
             if datos.get("abono") is not None:
                 cliente.abono_mensual = datos["abono"]
             if datos.get("precio_bidon20") is not None:

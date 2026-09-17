@@ -136,6 +136,8 @@ def cliente_nuevo_submit(
     direccion: str = Form(""),
     barrio: str = Form(""),
     cantidad_dispensers: int = Form(0),
+    cantidad_abonos: int = Form(0),
+    bidones_incluidos_abono: int = Form(4),
     abono_mensual: float = Form(0),
     precio_bidon20: float = Form(0),
     precio_bidon10: float = Form(0),
@@ -146,7 +148,8 @@ def cliente_nuevo_submit(
     cliente = models.Cliente(
         nombre=nombre, cuit=cuit, condicion_fiscal=condicion_fiscal, tipo_factura=tipo_factura,
         telefono=telefono, direccion=direccion, barrio=barrio,
-        cantidad_dispensers=cantidad_dispensers, abono_mensual=abono_mensual,
+        cantidad_dispensers=cantidad_dispensers, cantidad_abonos=cantidad_abonos,
+        bidones_incluidos_abono=bidones_incluidos_abono, abono_mensual=abono_mensual,
         precio_bidon20=precio_bidon20, precio_bidon10=precio_bidon10, precio_sifon=precio_sifon,
         observacion=observacion,
     )
@@ -166,10 +169,11 @@ def cliente_detalle(request: Request, cliente_id: int, db: Session = Depends(get
     remitos = db.query(models.Remito).filter(models.Remito.cliente_id == cliente_id) \
         .order_by(models.Remito.fecha.desc()).limit(20).all()
     pendientes = crud.facturaciones_pendientes_cliente(db, cliente_id)
+    productos = crud.listar_productos(db)
     return templates.TemplateResponse("cliente_detail.html", {
         "request": request, "user": user, "cliente": cliente,
         "movimientos": movimientos, "saldo": saldo, "remitos": remitos,
-        "pendientes": pendientes,
+        "pendientes": pendientes, "productos": productos,
     })
 
 
@@ -194,6 +198,8 @@ def cliente_editar_submit(
     direccion: str = Form(""),
     barrio: str = Form(""),
     cantidad_dispensers: int = Form(0),
+    cantidad_abonos: int = Form(0),
+    bidones_incluidos_abono: int = Form(4),
     abono_mensual: float = Form(0),
     precio_bidon20: float = Form(0),
     precio_bidon10: float = Form(0),
@@ -211,6 +217,8 @@ def cliente_editar_submit(
     cliente.direccion = direccion
     cliente.barrio = barrio
     cliente.cantidad_dispensers = cantidad_dispensers
+    cliente.cantidad_abonos = cantidad_abonos
+    cliente.bidones_incluidos_abono = bidones_incluidos_abono
     cliente.abono_mensual = abono_mensual
     cliente.precio_bidon20 = precio_bidon20
     cliente.precio_bidon10 = precio_bidon10
@@ -331,4 +339,67 @@ def pago_nuevo(
     )
     db.add(pago)
     db.commit()
+    return RedirectResponse(url=f"/clientes/{cliente_id}", status_code=303)
+
+
+# ---------------- PRODUCTOS (catálogo de venta) ----------------
+
+@app.get("/productos", response_class=HTMLResponse)
+def productos_list(request: Request, db: Session = Depends(get_db)):
+    user = usuario_o_redirect(request, db)
+    if not user:
+        return RedirectResponse(url="/login", status_code=303)
+    productos = crud.listar_productos(db, solo_activos=False)
+    return templates.TemplateResponse("productos_list.html", {"request": request, "user": user, "productos": productos})
+
+
+@app.get("/productos/nuevo", response_class=HTMLResponse)
+def producto_nuevo_form(request: Request, db: Session = Depends(get_db)):
+    user = usuario_o_redirect(request, db)
+    if not user:
+        return RedirectResponse(url="/login", status_code=303)
+    return templates.TemplateResponse("producto_form.html", {"request": request, "user": user})
+
+
+@app.post("/productos/nuevo")
+def producto_nuevo_submit(nombre: str = Form(...), precio: float = Form(0),
+                           observacion: str = Form(""), db: Session = Depends(get_db)):
+    db.add(models.Producto(nombre=nombre, precio=precio, observacion=observacion))
+    db.commit()
+    return RedirectResponse(url="/productos", status_code=303)
+
+
+@app.post("/productos/{producto_id}/toggle")
+def producto_toggle(producto_id: int, db: Session = Depends(get_db)):
+    producto = db.query(models.Producto).get(producto_id)
+    producto.activo = not producto.activo
+    db.commit()
+    return RedirectResponse(url="/productos", status_code=303)
+
+
+# ---------------- VENTAS PUNTUALES (a un cliente) ----------------
+
+@app.post("/clientes/{cliente_id}/ventas/nuevo")
+def venta_nueva(
+    cliente_id: int,
+    fecha: str = Form(...),
+    producto_id: str = Form(""),
+    nombre_producto: str = Form(""),
+    cantidad: int = Form(1),
+    precio_unitario: float = Form(0),
+    observacion: str = Form(""),
+    db: Session = Depends(get_db),
+):
+    nombre_final = nombre_producto
+    if producto_id:
+        producto = db.query(models.Producto).get(int(producto_id))
+        if producto and not nombre_final:
+            nombre_final = producto.nombre
+    crud.registrar_venta(
+        db, cliente_id=cliente_id,
+        producto_id=int(producto_id) if producto_id else None,
+        nombre_producto=nombre_final or "Producto",
+        fecha=datetime.strptime(fecha, "%Y-%m-%d").date(),
+        cantidad=cantidad, precio_unitario=precio_unitario, observacion=observacion,
+    )
     return RedirectResponse(url=f"/clientes/{cliente_id}", status_code=303)
